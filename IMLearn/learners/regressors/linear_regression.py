@@ -54,7 +54,7 @@ class LinearRegression(BaseEstimator):
             b = np.ones((X.shape[0], 1))
             X = np.hstack((b, X))
 
-        self.coefs_ = np.linalg.inv(X.T @ X).dot(X.T).dot(y)
+        self.coefs_ = np.transpose(np.linalg.pinv(np.transpose(X))) @ y
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -70,10 +70,10 @@ class LinearRegression(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        y_hat = np.zeros(X.shape[0])
-        for i in range(X.shape[0]):
-            y_hat[i] = self.coefs_.T @ X[i]
-        return y_hat
+        if self.include_intercept_:
+            b = np.ones((X.shape[0], 1))
+            X = np.hstack((b, X))
+        return X @ self.coefs_
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
