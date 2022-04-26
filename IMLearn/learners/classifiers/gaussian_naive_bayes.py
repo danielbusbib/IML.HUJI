@@ -153,17 +153,3 @@ class GaussianNaiveBayes(BaseEstimator):
         """
         from ...metrics import misclassification_error
         return misclassification_error(y, self._predict(X))
-
-
-from sklearn.naive_bayes import GaussianNB
-
-clf = GaussianNB()
-X = np.array([[-1, -1], [-2, -1], [-3, -2], [1, 1], [2, 1], [3, 2]])
-y = np.array([1, 1, 1, 2, 2, 2])
-f = GaussianNaiveBayes()
-f._fit(X, y)
-clf.fit(X, y)
-print(clf.theta_)
-print(f.mu_)
-print(clf.predict_proba([[-0.8, -1]]))
-print(f.likelihood(np.array([[-0.8, -1]])))
