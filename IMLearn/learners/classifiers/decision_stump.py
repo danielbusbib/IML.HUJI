@@ -1,6 +1,6 @@
 from __future__ import annotations
-from typing import NoReturn
-from IMLearn import BaseEstimator
+from typing import Tuple, NoReturn
+from ...base import BaseEstimator
 import numpy as np
 from itertools import product
 
@@ -20,14 +20,12 @@ class DecisionStump(BaseEstimator):
     self.sign_: int
         The label to predict for samples where the value of the j'th feature is about the threshold
     """
-
     def __init__(self) -> DecisionStump:
         """
         Instantiate a Decision stump classifier
         """
         super().__init__()
         self.threshold_, self.j_, self.sign_ = None, None, None
-        self.D = None
 
     def _fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
         """
@@ -41,100 +39,79 @@ class DecisionStump(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        loss_star, theta_star = np.inf, np.inf
-        for sign, j in product([-1, 1], range(X.shape[1])):
-            threshold, thr_loss = self._find_threshold(X[:, j], y, sign)
-            if thr_loss < loss_star:
-                self.sign_, self.threshold_, self.j_ = sign, threshold, j
-                loss_star = thr_loss
+        raise NotImplementedError()
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
-            Predict responses for given samples using fitted estimator
+        Predict responses for given samples using fitted estimator
 
-            Parameters
-            ----------
-            X : ndarray of shape (n_samples, n_features)
-                Input data to predict responses for
+        Parameters
+        ----------
+        X : ndarray of shape (n_samples, n_features)
+            Input data to predict responses for
 
-            y : ndarray of shape (n_samples, )
-                Responses of input data to fit to
+        y : ndarray of shape (n_samples, )
+            Responses of input data to fit to
 
-            Returns
-            -------
-            responses : ndarray of shape (n_samples, )
-                Predicted responses of given samples
+        Returns
+        -------
+        responses : ndarray of shape (n_samples, )
+            Predicted responses of given samples
 
-            Notes
-            -----
-            Feature values strictly below threshold are predicted as `-sign` whereas values which equal
-            to or above the threshold are predicted as `sign`
-            """
-        return self.sign_ * ((X[:, self.j_] >= self.threshold_) * 2 - 1)
-
-    def _find_threshold(self, values: np.ndarray, labels: np.ndarray, sign: int):
+        Notes
+        -----
+        Feature values strictly below threshold are predicted as `-sign` whereas values which equal
+        to or above the threshold are predicted as `sign`
         """
-            Given a feature vector and labels, find a threshold by which to perform a split
-            The threshold is found according to the value minimizing the misclassification
-            error along this feature
+        raise NotImplementedError()
 
-            Parameters
-            ----------
-            values: ndarray of shape (n_samples,)
-                A feature vector to find a splitting threshold for
+    def _find_threshold(self, values: np.ndarray, labels: np.ndarray, sign: int) -> Tuple[float, float]:
+        """
+        Given a feature vector and labels, find a threshold by which to perform a split
+        The threshold is found according to the value minimizing the misclassification
+        error along this feature
 
-            labels: ndarray of shape (n_samples,)
-                The labels to compare against
+        Parameters
+        ----------
+        values: ndarray of shape (n_samples,)
+            A feature vector to find a splitting threshold for
 
-            sign: int
-                Predicted label assigned to values equal to or above threshold
+        labels: ndarray of shape (n_samples,)
+            The labels to compare against
 
-            Returns
-            -------
-            thr: float
-                Threshold by which to perform split
+        sign: int
+            Predicted label assigned to values equal to or above threshold
 
-            thr_err: float between 0 and 1
-                Misclassificaiton error of returned threshold
+        Returns
+        -------
+        thr: float
+            Threshold by which to perform split
 
-            Notes
-            -----
-            For every tested threshold, values strictly below threshold are predicted as `-sign` whereas values
-            which equal to or above the threshold are predicted as `sign`
-            """
+        thr_err: float between 0 and 1
+            Misclassificaiton error of returned threshold
 
-        # sort_idx = np.argsort(values)
-        # X, y, D = values[sort_idx], labels[sort_idx], self.D[sort_idx]
-        #
-        # thetas = np.concatenate([[-np.inf], X[:], [np.inf]])
-        # minimal_theta_loss = np.sum(D[y == sign])  # loss of the smallest possible theta
-        # losses = np.append(minimal_theta_loss, minimal_theta_loss - np.cumsum(D * (y * sign)))
-        # min_loss_idx = np.argmin(losses)
-        # return thetas[min_loss_idx], losses[min_loss_idx]
-        #
-        sort_idx = np.argsort(values)
-        values, labels = values[sort_idx], labels[sort_idx]
-        losses = np.cumsum(labels * sign)
-                 # + np.cumsum(labels[::-1]*-sign)[::-1]  # D * (y * sign)
-        min_loss_idx = np.argmin(np.array(losses))
-        return values[min_loss_idx], losses[min_loss_idx]/labels.size
+        Notes
+        -----
+        For every tested threshold, values strictly below threshold are predicted as `-sign` whereas values
+        which equal to or above the threshold are predicted as `sign`
+        """
+        raise NotImplementedError()
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
-            Evaluate performance under misclassification loss function
+        Evaluate performance under misclassification loss function
 
-            Parameters
-            ----------
-            X : ndarray of shape (n_samples, n_features)
-                Test samples
+        Parameters
+        ----------
+        X : ndarray of shape (n_samples, n_features)
+            Test samples
 
-            y : ndarray of shape (n_samples, )
-                True labels of test samples
+        y : ndarray of shape (n_samples, )
+            True labels of test samples
 
-            Returns
-            -------
-            loss : float
-                Performance under missclassification loss function
-            """
-        from ...metrics import misclassification_error
-        return misclassification_error(y, self._predict(X))
+        Returns
+        -------
+        loss : float
+            Performance under missclassification loss function
+        """
+        raise NotImplementedError()
