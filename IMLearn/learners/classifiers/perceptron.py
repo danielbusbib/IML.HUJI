@@ -76,26 +76,23 @@ class Perceptron(BaseEstimator):
         -----
         Fits model with or without an intercept depending on value of `self.fit_intercept_`
         """
-        new_X = X
         if self.include_intercept_:
-            b = np.ones((X.shape[0], 1))
-            new_X = np.hstack((b, X))  # concatenate
+            X = np.c_[np.ones(len(X)), X]
+        self.coefs_ = np.zeros(X.shape[1])
 
-        m, d = new_X.shape[0], new_X.shape[1]
-        self.coefs_ = np.zeros(d)
-        num_iter = 0
-        changed_w = True
+        self.fitted_ = True
+        # Iterate for `self.max_iter` times
+        for _ in range(self.max_iter_):
+            # In each iteration search for the first misclassified sample. If such sample exists adjust
+            # the solution (`self.coefs_`) and call the `self.callback_` function.
+            i = next((i for i in range(len(X)) if y[i] * (X[i] @ self.coefs_) <= 0), None)
+            if i is None:
+                break
 
-        while changed_w and num_iter < self.max_iter_:
-            changed_w = False
-            num_iter += 1
+            self.coefs_ += y[i] * X[i]
+            self.callback_(self, X[i], y[i])
 
-            for i in range(m):
-                if y[i] * np.dot(self.coefs_, new_X[i]) <= 0:
-                    changed_w = True
-                    self.coefs_ += (y[i] * new_X[i])
-                    self.callback_(self, X[i], y[i])
-                    break
+        self.callback_(self, None, None)
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -135,4 +132,4 @@ class Perceptron(BaseEstimator):
             Performance under missclassification loss function
         """
         from ...metrics import misclassification_error
-        return misclassification_error(self._predict(X), y)
+        return misclassification_error(y, self._predict(X))
