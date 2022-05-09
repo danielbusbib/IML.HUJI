@@ -113,20 +113,11 @@ class LDA(BaseEstimator):
         """
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `likelihood` function")
-        res = []
 
-        for i in range(X.shape[0]):
-            lst = []
-            for k in range(self.classes_.shape[0]):
-                p = np.exp(-0.5 * ((X[i] - self.mu_[k]) @ np.linalg.inv(self.cov_) @ (X[i] - self.mu_[k]).T))\
-                    / np.sqrt((2 * np.pi) ** X.shape[1] * np.linalg.det(self.cov_))
-                p *= self.pi_[k]
-                lst.append(p)
-
-            # argmax k
-            res.append(lst)
-
-        return np.array(res)
+        z = np.sqrt((2 * np.pi) ** X.shape[1] * np.linalg.det(self.cov_))
+        d = X[:, np.newaxis, :] - self.mu_
+        res = np.exp(-0.5 * np.sum(d.dot(self._cov_inv) * d, axis=2)) / z
+        return res * self.pi_
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
