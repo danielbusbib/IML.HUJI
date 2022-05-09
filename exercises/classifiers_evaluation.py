@@ -51,20 +51,13 @@ def run_perceptron():
         def callback_func(fit: Perceptron, x: np.ndarray, y_: int):
             losses.append(fit._loss(X, y))
 
-
-        d = list(range(1, 1001))
-        p = Perceptron(callback=callback_func)
-        p._fit(X, y)
-
-        # Plot figure of loss as function of fitting iteration
-        if len(d) != len(losses):
-            for _ in range(len(d) - len(losses)):
-                losses.append(0)
-
-        fig = px.line(x=d, y=losses, markers=True,
-                      title=f"Perceptron Model - Loss as function of fitting iteration"
-                            f"on {f} Dataset").\
-            update_layout(xaxis_title="NUMBER OF ITERATIONS", yaxis_title="LOSS")
+        Perceptron(callback=callback_func).fit(X, y)
+        fig = go.Figure(data=go.Scatter(x=list(range(len(losses))), y=losses, mode="lines", marker=dict(color="black")),
+                        layout=go.Layout(
+                            title={"x": 0.5, "text": r"$\text{Perceptron Training Error - %s dataset}$" % n},
+                            xaxis_title=f"Iteration",
+                            yaxis_title="Misclassification Error"))
+        fig.write_image(f"perceptron_fit_{n}.png")
         fig.show()
 
 
@@ -120,7 +113,7 @@ def compare_gaussian_classifiers():
 
         # Gaussian Naive Bayes PLOT:
         pr = gne._predict(X)
-        for c in ['0', '1', '2']:
+        for c in gne.classes_:
             V = X[y == int(c)]
             fig.add_trace(
                 go.Scatter(x=V[:, 0], y=V[:, 1], mode="markers", name=f"Shape True value - {c}",
@@ -129,7 +122,7 @@ def compare_gaussian_classifiers():
                 row=1, col=1
             )
 
-        for c in ['0', '1', '2']:
+        for c in gne.classes_:
             P = X[pr == int(c)]
             fig.add_trace(
                 go.Scatter(x=P[:, 0], y=P[:, 1], mode="markers", name=f"Color Predicted value - {c}",
