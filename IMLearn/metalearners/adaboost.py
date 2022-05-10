@@ -49,22 +49,22 @@ class AdaBoost(BaseEstimator):
             Responses of input data to fit to
         """
         m = X.shape[0]
+        self.models_, self.weights_ = [], np.zeros(m)
         D = np.ones(m) / m  # uniform initial distribution
         for t in range(self.iterations_):
-            print(t)
+            # print(t)
             h = self.wl_()
             # h.D = D
             h._fit(X, y*D)
             self.models_.append(h)
             y_hat = h._predict(X)  # current prediction
-            disagree = y_hat - y
-            disagree[disagree != 0] = 1  # = 1[yi != h(xi)]
-            error_t = np.dot(D, disagree)  # weighted sum
-            w = 0.5 * np.log(1 / error_t - 1)
-            self.weights_[t] = w
-            D = D * np.exp(-y * w * y_hat)  # element-wise
-            D /= np.sum(D)  # normalize
-        self.D_ = D
+            epsilon = np.sum((np.abs(y_hat - y) / 2) * D)
+            self.weights_[t] = 0.5 * np.log(1.0 / epsilon - 1)
+            D *= np.exp((-1) * self.weights_[t] * y * y_hat)
+            D /= np.sum(D)
+            self.D_ = D
+
+        # self.D_ = D
 
     def _predict(self, X):
         """
@@ -123,8 +123,10 @@ class AdaBoost(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
+        prev_T = self.iterations_
         self.iterations_ = T
         y_hat = self._predict(X)
+        self.iterations_ = prev_T
         return y_hat
 
     def partial_loss(self, X: np.ndarray, y: np.ndarray, T: int) -> float:
