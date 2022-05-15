@@ -45,25 +45,24 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
     # Question 1: Train- and test errors of AdaBoost in noiseless case
     adaboost = AdaBoost(DecisionStump, n_learners).fit(train_X, train_y)
 
-    test_err = []
-    train_err = []
-    for max_t in range(n_learners):
+    test_err, train_err = [], []
+    for max_t in range(1, n_learners + 1):
         test_err.append(adaboost.partial_loss(test_X, test_y, max_t))
         train_err.append(adaboost.partial_loss(train_X, train_y, max_t))
     # plotting
-    x = [i for i in range(n_learners)]
-    plt.plot(x, test_err)
+    x = [i for i in range(1, n_learners + 1)]
     plt.plot(x, train_err)
+    plt.plot(x, test_err)
     plt.title(f"Train and Test Errors as a function of the number of fitted learners"
               f" | model noise ratio:{noise}"), plt.xlabel("Fitted Learners"), plt.ylabel("Error")
-    plt.legend(["Test Error", "Train Error"])
+    plt.legend(["Train Error", "Test Error"])
     plt.grid()
     plt.show()
 
     # Question 2: Plotting decision surfaces
     T = [5, 50, 100, 250]
     lims = np.array([np.r_[train_X, test_X].min(axis=0), np.r_[train_X, test_X].max(axis=0)]).T + np.array([-.1, .1])
-    fig = make_subplots(rows=2, cols=2,horizontal_spacing=0.01, vertical_spacing=0.03,
+    fig = make_subplots(rows=2, cols=2, horizontal_spacing=0.02, vertical_spacing=0.2,
                         subplot_titles=[f"{t} Classifiers" for t in T])
     # each T:
     err=[]
@@ -104,14 +103,14 @@ def fit_and_evaluate_adaboost(noise, n_learners=250, train_size=5000, test_size=
     # fig.show()
 
     # Question 4: Decision surface with weighted samples
-    mk_size = 45 if noise == 0 else 10
     fig1 = go.Figure([decision_surface(adaboost.predict, *lims, showscale=False),
                       go.Scatter(x=train_X[:, 0], y=train_X[:, 1],
-                                 mode="markers", showlegend=False,
+                                 mode="markers",
+                                 showlegend=False,
                                  marker=dict(color=train_y,
                                              colorscale=[custom[0], custom[-1]],
                                              size=adaboost.D_,
-                                             sizeref=2 * np.max(adaboost.D_) / (mk_size ** 2),
+                                             sizeref=2 * np.max(adaboost.D_) / ((45 if noise == 0 else 10) ** 2),
                                              sizemode="area",
                                              sizemin=0.5,
                                              line=dict(width=1, color="DarkSlateGrey")
