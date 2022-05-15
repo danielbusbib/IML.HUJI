@@ -4,6 +4,7 @@ from IMLearn.base import BaseEstimator
 import numpy as np
 from itertools import product
 
+
 # from ...metrics import misclassification_error
 
 
@@ -22,6 +23,7 @@ class DecisionStump(BaseEstimator):
     self.sign_: int
         The label to predict for samples where the value of the j'th feature is about the threshold
     """
+
     def __init__(self) -> DecisionStump:
         """
         Instantiate a Decision stump classifier
@@ -42,12 +44,12 @@ class DecisionStump(BaseEstimator):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        loss_star, theta_star = np.inf, np.inf
+        loss = np.inf
         for sign, j in product([-1, 1], range(X.shape[1])):
             threshold, thr_loss = self._find_threshold(X[:, j], y, sign)
-            if thr_loss < loss_star:
+            if thr_loss < loss:
                 self.sign_, self.threshold_, self.j_ = sign, threshold, j
-                loss_star = thr_loss
+                loss = thr_loss
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -103,18 +105,13 @@ class DecisionStump(BaseEstimator):
         For every tested threshold, values strictly below threshold are predicted as `-sign` whereas values
         which equal to or above the threshold are predicted as `sign`
         """
-        sort_idx = np.argsort(values)
-        values, labels = values[sort_idx], labels[sort_idx]
-        lab = np.concatenate([[0], labels[:]])
-        lab2 = np.concatenate([labels[:], [0]])
-        losses = np.minimum(np.cumsum(lab2 * sign),
-                            np.cumsum(lab[::-1] * -sign)[::-1])
-        min_id = np.argmin(losses)
-        if values[min_id] == np.max(values):
-            return np.inf, losses[min_id]
-        if values[min_id] == np.min(values):
-            return -np.inf, losses[min_id]
-        return values[min_id], losses[min_id]
+        sorted_values = np.argsort(values)
+        values, labels = values[sorted_values], labels[sorted_values]
+        thr = np.concatenate(([[-np.inf], (values[1:] + values[:-1]) / 2, [np.inf]]))
+        diff_count = np.sum(np.abs(labels[sign != np.sign(labels)]))
+        losses = np.append(diff_count, diff_count + np.cumsum(labels * sign))
+        min_loss_idx = np.argmin(losses)
+        return thr[min_loss_idx], losses[min_loss_idx]
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
