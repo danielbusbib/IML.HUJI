@@ -29,7 +29,8 @@ def select_polynomial_degree(n_samples: int = 100, noise: float = 5):
     """
     # Question 1 - Generate dataset for model f(x)=(x+3)(x+2)(x+1)(x-1)(x-2) + eps for eps Gaussian noise
     # and split into training- and testing portions
-    X = np.random.uniform(-1.2, 2, n_samples)
+    # X = np.random.uniform(-1.2, 2, n_samples)
+    X = np.linspace(-1.2, 2, n_samples)
     f = lambda x: (x + 3) * (x + 2) * (x + 1) * (x - 1) * (x - 2)
     epsilon = np.random.normal(0, noise, n_samples)
     y = f(X) + epsilon
@@ -66,41 +67,12 @@ def select_polynomial_degree(n_samples: int = 100, noise: float = 5):
     # Question 3 - Using best value of k, fit a k-degree polynomial model and report test error
     k_star = valid_s.index(min(valid_s))
     poly_train = PolynomialFitting(k_star).fit(train_X, train_y)
-    print(f"num of samples:{n_samples} | noise:{noise}")
+    print(f"num of samples: {n_samples} | noise: {noise}")
     print("k* = ", k_star)
     print("test error = ", round(mean_square_error(test_y, poly_train.predict(test_X)), 2))
-
-
-def run_ridge(lamdas, train_X, train_y, n):
-    trains_s, valid_s = [], []
-    for i in lamdas:
-        train_score, validation_error = cross_validate(
-            RidgeRegression(lam=i), train_X, train_y, mean_square_error, cv=5)
-        trains_s.append(train_score)
-        valid_s.append(validation_error)
-    plt.plot(lamdas, valid_s, label="Validation Error")
-    plt.plot(lamdas, trains_s, label="Training Error")
-    plt.title(f"Ridge Model| VALID- AND TRAINING- ERROR | NUM SAMPLES = {n}")
-    plt.legend(), plt.xlabel("Lamda"), plt.ylabel("MSE error")
-    plt.grid()
-    plt.show()
-    return valid_s
-
-
-def run_lasso(lamdas, train_X, train_y, n):
-    trains_s, valid_s = [], []
-    for i in lamdas:
-        train_score, validation_error = cross_validate(
-            Lasso(alpha=i), train_X, train_y, mean_square_error, cv=5)
-        trains_s.append(train_score)
-        valid_s.append(validation_error)
-    plt.plot(lamdas, valid_s, label="Validation Error")
-    plt.plot(lamdas, trains_s, label="Training Error")
-    plt.title(f"Lasso Model | VALID- AND TRAINING- ERROR | NUM SAMPLES = {n}")
-    plt.legend(), plt.xlabel("Lamda"), plt.ylabel("MSE error")
-    plt.grid()
-    plt.show()
-    return valid_s
+    print("validation error = ",
+          round(cross_validate(PolynomialFitting(i), train_X, train_y, mean_square_error, cv=5)[1], 2))
+    print("----------")
 
 
 def select_regularization_parameter(n_samples: int = 50, n_evaluations: int = 500):
@@ -122,13 +94,30 @@ def select_regularization_parameter(n_samples: int = 50, n_evaluations: int = 50
     train_X, train_y, test_X, test_y = X[:n], y[:n], X[n:], y[n:]
 
     # Question 7 - Perform CV for different values of the regularization parameter for Ridge and Lasso regressions
-    lamdas = np.linspace(0, 1.8, num=n_evaluations)
-    valid_ridge = run_ridge(lamdas, train_X, train_y, n_samples)
-    valid_lasso = run_lasso(lamdas, train_X, train_y, n_samples)
+    lamdas = np.linspace(0.0001, 3, num=n_evaluations)
+
+    ridge_trains_err, ridge_valid_err = [], []
+    lasso_trains_err, lasso_valid_err = [], []
+    for i in lamdas:
+        t1, v1 = cross_validate(
+            RidgeRegression(lam=i), train_X, train_y, mean_square_error, cv=5)
+        ridge_trains_err.append(t1), ridge_valid_err.append(v1)
+        t2, v2 = cross_validate(
+            Lasso(alpha=i, tol=2.300e+01), train_X, train_y, mean_square_error, cv=5)
+        lasso_trains_err.append(t2), lasso_valid_err.append(v2)
+
+    plt.plot(lamdas, ridge_trains_err, label="Ridge Training Error")
+    plt.plot(lamdas, ridge_valid_err, label="Ridge Validation Error")
+    plt.plot(lamdas, lasso_trains_err, label="Lasso Training Error")
+    plt.plot(lamdas, lasso_valid_err, label="Lasso Validation Error")
+    plt.title(f"Ridge and Lasso Model | VALID- AND TRAINING- ERROR | NUM SAMPLES = {n_samples}")
+    plt.legend(), plt.xlabel("Lambda"), plt.ylabel("MSE error")
+    plt.grid()
+    plt.show()
 
     # Question 8 - Compare best Ridge model, best Lasso model and Least Squares model
-    best_ridge = lamdas[np.argmin(valid_ridge)]
-    best_lasso = lamdas[np.argmin(valid_lasso)]
+    best_ridge = lamdas[np.argmin(ridge_valid_err)]
+    best_lasso = lamdas[np.argmin(lasso_valid_err)]
     print("Best Regularization Term:")
     print(f"Lasso: {best_lasso}")
     print(f"Ridge: {best_ridge}")
