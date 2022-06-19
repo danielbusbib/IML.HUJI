@@ -50,17 +50,15 @@ class LogisticRegression(BaseEstimator):
         """
         if self.include_intercept_:
             X = np.c_[np.ones(len(X)), X]
-        self.coefs_ = np.random.randn(X.shape[1])
-        reg_model = None
-        if self.penalty_ == "l1":
-            reg_model = L1()
-        if self.penalty_ == "l2":
-            reg_model = L2()
-        lg = LogisticModule()
-        rg = RegularizedModule(fidelity_module=lg, regularization_module=reg_model,
-                               lam=self.lam_, include_intercept=self.include_intercept_
-                               ,weights=self.coefs_)
-        self.coefs_ = self.solver_.fit(f=rg, X=X, y=y)
+        init = np.random.randn(X.shape[1]) / np.sqrt(X.shape[1])
+        # Create module for the Gradient-Descent solver:
+        if self.penalty_ == "none":
+            model = LogisticModule(init.copy())
+        else:
+            l = L1() if self.penalty_ == "l1" else L2()
+            model = RegularizedModule(LogisticModule(), l, self.lam_, init.copy(), self.include_intercept_)
+
+        self.coefs_ = self.solver_.fit(model, X, y)
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -76,10 +74,8 @@ class LogisticRegression(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        if self.include_intercept_:
-            X = np.c_[np.ones(len(X)), X]
         res = self.predict_proba(X)
-        return np.where(res >= self.alpha_, 1, 0)
+        return np.where(res > self.alpha_, 1, 0)
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         """
@@ -95,6 +91,8 @@ class LogisticRegression(BaseEstimator):
         probabilities: ndarray of shape (n_samples,)
             Probability of each sample being classified as `1` according to the fitted model
         """
+        if self.include_intercept_:
+            X = np.c_[np.ones(len(X)), X]
         return 1 / (1 + np.exp(-X @ self.coefs_))
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
