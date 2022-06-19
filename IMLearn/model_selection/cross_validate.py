@@ -37,13 +37,16 @@ def cross_validate(estimator: BaseEstimator, X: np.ndarray, y: np.ndarray,
     validation_score: float
         Average validation score over folds
     """
-    train_score, validation_score = 0, 0
-    separator = np.remainder(np.arange(y.size), cv)  # [0, 1, .., cv-1, 0,1, .., cv-1, 0, ....]
-    for k in range(cv):
-        # separate the data to k-folds
-        train_fold_X, train_fold_y = X[separator != k], y[separator != k]
-        validate_fold_X, validate_fold_y = X[separator == k], y[separator == k]
-        estimator.fit(train_fold_X, train_fold_y)
-        train_score += scoring(train_fold_y, estimator.predict(train_fold_X))
-        validation_score += scoring(validate_fold_y, estimator.predict(validate_fold_X))
-    return train_score/cv, validation_score/cv
+    ids = np.arange(X.shape[0])
+
+    # Randomly split samples into `cv` folds
+    folds = np.array_split(ids, cv)
+
+    train_score, validation_score = .0, .0
+    for fold_ids in folds:
+        train_msk = ~np.isin(ids, fold_ids)
+        fit = deepcopy(estimator).fit(X[train_msk], y[train_msk])
+        train_score += scoring(y[train_msk], fit.predict(X[train_msk]))
+        validation_score += scoring(y[fold_ids], fit.predict(X[fold_ids]))
+
+    return train_score / cv, validation_score / cv
