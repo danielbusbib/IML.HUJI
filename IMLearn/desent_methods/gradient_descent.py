@@ -125,7 +125,7 @@ class GradientDescent:
         min_objective = f.compute_output(X=X, y=y), w_t
         sum = w_t.copy()
         d = 1
-        for t in range(1, self.max_iter_ + 1):
+        for t in range(self.max_iter_):
             prev = w_t
             w_t = w_t - self.learning_rate_.lr_step(t=t) * f.compute_jacobian(X=X, y=y)
             sum += w_t.copy()
