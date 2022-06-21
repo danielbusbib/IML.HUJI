@@ -259,5 +259,5 @@ class RegularizedModule(BaseModule):
         self.regularization_module_.weights = weights.copy()
         if self.include_intercept_:
             self.regularization_module_.weights[0] = 0
-            
+
         self.fidelity_module_.weights = weights.copy()
