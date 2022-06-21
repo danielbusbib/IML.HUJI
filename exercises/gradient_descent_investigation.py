@@ -91,22 +91,19 @@ def get_gd_state_recorder_callback() -> Tuple[Callable[[], None], List[np.ndarra
 
 def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e / 3]),
                                  etas: Tuple[float] = (1, .1, .01, .001)):
-    def plot_norm(x, y, tit):
-        plt.plot(x, y)
-        plt.title(tit), plt.xlabel("Num of iteration"), plt.ylabel("Norm")
-        plt.grid()
-        plt.show()
-
+    fig1 = go.Figure(layout=dict(title="L1 | Norm as a function of the GD iteration for all specified learning rates"))
+    fig2 = go.Figure(layout=dict(title="L2 | Norm as a function of the GD iteration for all specified learning rates"))
     for eta in etas:
         # L2 MODULE
         l2 = L2(init.copy())
         c = get_gd_state_recorder_callback()
         gd = GradientDescent(learning_rate=FixedLR(eta), out_type="best", callback=c[0])
         w = gd.fit(l2, X=None, y=None)
-        plotly.offline.plot(plot_descent_path(L2, np.array(c[2]), title=f"| module L2 | eta={eta}"))
-        plot_norm(list(range(len(c[1]))), c[1],
-                  f"L2  norm as a function of the GD iteration | eta={eta}")
-        l2.weights = w
+        if eta == .01:
+            plotly.offline.plot(plot_descent_path(L2, np.array(c[2]), title=f"| module L2 | eta={eta}"))
+        fig1.add_trace(go.Scatter(x=np.arange(len(c[1])), y=np.array(c[1]).flatten(),
+                                    mode="lines", name=f"eta = {eta}"))
+        l2.weights = w.copy()
         print(f"eta: {eta}")
         print(f"module: L2, lowest error: {l2.compute_output()}")
 
@@ -115,11 +112,17 @@ def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e /
         c = get_gd_state_recorder_callback()
         gd = GradientDescent(learning_rate=FixedLR(eta), out_type="best", callback=c[0])
         w = gd.fit(l1, X=None, y=None)
-        plotly.offline.plot(plot_descent_path(L1, np.array(c[2]), title=f"| module L1 | eta={eta}"))
-        plot_norm(list(range(len(c[1]))), c[1],
-                  f"L1 norm as a function of the GD iteration | eta={eta}")
-        l1.weights = w
-        print(f"module: L1, lowest error: {l2.compute_output()}", end='\n')
+        if eta == .01:
+            plotly.offline.plot(plot_descent_path(L1, np.array(c[2]), title=f"| module L1 | eta={eta}"))
+        fig2.add_trace(go.Scatter(x=np.arange(len(c[1])), y=np.array(c[1]).flatten(),
+                                    mode="lines", name=f"eta = {eta}"))
+        l1.weights = w.copy()
+        print(f"module: L1, lowest error: {l1.compute_output()}", end='\n')
+
+    fig1.update_layout(xaxis_title="GD Iteration", yaxis_title="Norm")
+    plotly.offline.plot(fig1)
+    fig2.update_layout(xaxis_title="GD Iteration", yaxis_title="Norm")
+    plotly.offline.plot(fig2)
 
 
 def compare_exponential_decay_rates(init: np.ndarray = np.array([np.sqrt(2), np.e / 3]),
@@ -128,30 +131,25 @@ def compare_exponential_decay_rates(init: np.ndarray = np.array([np.sqrt(2), np.
     # Optimize the L1 objective using different decay-rate values of the exponentially decaying learning rate
     c_rate = []
     d = []
+    fig = go.Figure(layout=dict(title="L1 Norm Convergence Using Different Decay Rates"))
     for g in gammas:
         c = get_gd_state_recorder_callback()
         gd = GradientDescent(learning_rate=ExponentialLR(base_lr=eta, decay_rate=g),
                              out_type="best", callback=c[0])
         l1 = L1(init.copy())
-        w = gd.fit(l1, X=None, y=None)
+        gd.fit(l1, X=None, y=None)
+        fig.add_trace(go.Scatter(x=np.arange(len(c[1])), y=c[1], mode="lines",
+                                 name=f"gamma = {g}"))
         c_rate.append(c[1])
         if g == .95:
             d = c[2]
-
-    # Plot algorithm's convergence for the different values of gamma
-    plt.plot(list(range(len(c_rate[0]))), c_rate[0])
-    plt.plot(list(range(len(c_rate[1]))), c_rate[1])
-    plt.plot(list(range(len(c_rate[2]))), c_rate[2])
-    plt.plot(list(range(len(c_rate[3]))), c_rate[3])
-    plt.title("convergence rate for all decay rates"), plt.xlabel("Num of iteration"), plt.ylabel("Norm")
-    plt.legend(["gamma 0.9", "gamma 0.95", "gamma 0.99", "gamma 1"])
-    plt.grid()
-    plt.show()
+    fig.update_layout(xaxis_title="GD iteration", yaxis_title="Norm Val")
+    plotly.offline.plot(fig)
 
     print(f"exponentially decay - l1 lowest norm: {np.min([np.min(c_rate[i]) for i in range(4)])}")
     # Plot descent path for gamma=0.95
-    plotly.offline.plot(plot_descent_path(L1, np.array(d)))
-    plotly.offline.plot(plot_descent_path(L2, np.array(d)))
+    plotly.offline.plot(plot_descent_path(L1, np.array(d), title="L1 NORM | Decay Rate = 0.95"))
+    plotly.offline.plot(plot_descent_path(L2, np.array(d), title="L2 NORM | Decay Rate = 0.95"))
 
 
 def load_data(path: str = "../datasets/SAheart.data", train_portion: float = .8) -> \
@@ -196,12 +194,14 @@ def fit_logistic_regression():
     X_train, y_train = X_train.to_numpy(), y_train.to_numpy()
     X_test, y_test = X_test.to_numpy(), y_test.to_numpy()
     # Plotting convergence rate of logistic regression over SA heart disease data
-    lg = LogisticRegression()
+    callback, descent_path, values = get_gd_state_recorder_callback()
+    gd = GradientDescent(callback=callback, learning_rate=FixedLR(1e-4), max_iter=20000, out_type="last")
+    lg = LogisticRegression(solver=gd)
     lg._fit(X_train, y_train)
     # plot ROC curve - taken from LAB 04
-    fpr, tpr, thresholds = roc_curve(y_train, lg.predict_proba(np.c_[np.ones(len(X_train)), X_train]))
+    fpr, tpr, thresholds = roc_curve(y_train, lg.predict_proba(X_train))
     c = [custom[0], custom[-1]]
-    go.Figure(
+    plotly.offline.plot(go.Figure(
         data=[go.Scatter(x=[0, 1], y=[0, 1], mode="lines", line=dict(color="black", dash='dash'),
                          name="Random Class Assignment"),
               go.Scatter(x=fpr, y=tpr, mode='markers+lines', text=thresholds, name="", showlegend=False, marker_size=5,
@@ -209,7 +209,7 @@ def fit_logistic_regression():
                          hovertemplate="<b>Threshold:</b>%{text:.3f}<br>FPR: %{x:.3f}<br>TPR: %{y:.3f}")],
         layout=go.Layout(title=rf"$\text{{ROC Curve Of Fitted Model - Logistic Regression}}={auc(fpr, tpr):.6f}$",
                          xaxis=dict(title=r"$\text{False Positive Rate (FPR)}$"),
-                         yaxis=dict(title=r"$\text{True Positive Rate (TPR)}$")))
+                         yaxis=dict(title=r"$\text{True Positive Rate (TPR)}$"))))
     a_star = round(thresholds[np.argmax(tpr - fpr)], 2)
     lg.alpha_ = a_star
     print("-----------")
@@ -218,38 +218,23 @@ def fit_logistic_regression():
 
     # Fitting l1- and l2-regularized logistic regression models, using cross-validation to specify values
     # of regularization parameter
-    lg1 = LogisticRegression(penalty="l1", alpha=0.5)
-    lg2 = LogisticRegression(penalty="l2", alpha=0.5)
-
-    lamdas = np.linspace(0.0001, 2, num=50)
-    trains_err_1, valid_err_1 = [], []
-    for i in lamdas:
-        lg1.lam_, lg2.lam_ = i, i
-        t1, v1 = cross_validate(lg1, X_train, y_train, misclassification_error)
-        trains_err_1.append(t1), valid_err_1.append(v1)
-    best_lam1 = lamdas[np.argmin(valid_err_1)]
-    lg1.lam = best_lam1
-    lg1._fit(X_train, y_train)
-    test_error = lg1.loss(X_test, y_test)
-    print("-----------")
-    print(f"module L1 | lambda chosen: {best_lam1}")
-    print(f"model test error: {test_error}")
-    trains_err_2, valid_err_2 = [], []
-    for i in lamdas:
-        lg2.lam_ = i
-        t2, v2 = cross_validate(lg2, X_train, y_train, misclassification_error)
-        trains_err_2.append(t2), valid_err_2.append(v2)
-    best_lam2 = lamdas[np.argmin(valid_err_2)]
-    lg2.lam_ = best_lam2
-    test_error = lg2.loss(X_test, y_test)
-    print("-----------")
-    print(f"module L2 | lambda chosen: {best_lam2}")
-    print(f"model test error: {test_error}")
+    lambdas = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1]
+    for p in ["l1", "l2"]:
+        train_errors, validation_errors = [], []
+        for i in lambdas:
+            train_error, valid_error = cross_validate(LogisticRegression(solver=gd, penalty=p, lam=i),
+                                                      X_train, y_train, misclassification_error)
+            train_errors.append(train_error), validation_errors.append(valid_error)
+        best_lam = lambdas[np.argmin(validation_errors)]
+        model = LogisticRegression(solver=gd, penalty=p, lam=best_lam).fit(X_train, y_train)
+        print("-----------")
+        print(f"module {p.capitalize()} | lambda chosen: {best_lam}")
+        print(f"model test error: {model.loss(X_test, y_test)}")
 
 
 if __name__ == '__main__':
     np.random.seed(0)
-    # compare_fixed_learning_rates()
-    # compare_exponential_decay_rates()
+    compare_fixed_learning_rates()
+    compare_exponential_decay_rates()
     warnings.filterwarnings('ignore')
     fit_logistic_regression()
