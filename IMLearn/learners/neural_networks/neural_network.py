@@ -169,8 +169,8 @@ class NeuralNetwork(BaseEstimator, BaseModule):
                 w_t = np.delete(w_t, 0, axis=1)
                 activation = np.c_[np.ones(activation.shape[0]), activation]
 
-            input = self.pre_activations[len(self.modules_) - i - 1]
-            t = module.compute_jacobian(X=input) * deriv
+            inp = self.pre_activations[len(self.modules_) - i - 1]
+            t = module.compute_jacobian(X=inp) * deriv
             deriv = t @ w_t
             grads.append((t.T @ activation).T)
 

@@ -120,6 +120,7 @@ if __name__ == '__main__':
         .write_image(f"nonlinear_data.png")
 
     import matplotlib.pyplot as plt
+    import plotly.offline
 
     # ---------------------------------------------------------------------------------------------#
     # Question 1: Fitting simple network with two hidden layers                                    #
@@ -141,15 +142,17 @@ if __name__ == '__main__':
         nn = NeuralNetwork(modules=[layer_one, hidden_one, layer_two], solver=gradient, loss_fn=loss)
         nn._fit(train_X, train_y)
 
-        # fig = plot_decision_boundary(nn, lims, train_X, train_y, title="Boundaries learned by network")
-        # plotly.offline.plot(fig)
+        fig = plot_decision_boundary(nn, lims, train_X, train_y, title="Boundaries learned by network")
+        plotly.offline.plot(fig)
+
         print("----- q1 -----")
         print(f"accuracy over test = {accuracy(test_y, nn._predict(test_X))}")
         losses, gradient_norm = values.copy(), weights.copy()
         # ---------------------------------------------------------------------------------------------#
         # Question 2: Fitting a network with no hidden layers                                          #
         # ---------------------------------------------------------------------------------------------#
-        layer_one = FullyConnectedLayer(input_dim=len(train_X[0]), output_dim=3, activation=relu1, include_intercept=True)
+        layer_one = FullyConnectedLayer(input_dim=len(train_X[0]), output_dim=3, activation=relu1,
+                                        include_intercept=True)
         nn = NeuralNetwork(modules=[layer_one], loss_fn=loss, solver=gradient)
         nn._fit(train_X, train_y)
         # fig = plot_decision_boundary(nn, lims, train_X, train_y, title="Test")
@@ -166,6 +169,7 @@ if __name__ == '__main__':
         plt.grid()
         plt.xlabel("iteration")
         plt.show()
+
 
     qst()
     qst(neurons=6)
