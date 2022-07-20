@@ -91,7 +91,18 @@ if __name__ == '__main__':
     # Question 5+6+7: Network with ReLU activations using SGD + recording convergence              #
     # ---------------------------------------------------------------------------------------------#
     # Initialize, fit and test network
-    raise NotImplementedError()
+    hidden_size = 64
+    relu1, relu2 = ReLU(), ReLU()
+    lr = FixedLR(0.1)
+    loss = CrossEntropyLoss()
+    layer_one = FullyConnectedLayer(input_dim=len(train_X[0]), output_dim=hidden_size, activation=relu1,
+                                    include_intercept=True)
+    hidden_one = FullyConnectedLayer(input_dim=hidden_size, output_dim=hidden_size, activation=relu2,
+                                     include_intercept=True)
+    layer_two = FullyConnectedLayer(input_dim=hidden_size, output_dim=10, include_intercept=True)
+    gradient = StochasticGradientDescent(learning_rate=lr, max_iter=10000, batch_size=256, callback=callback)
+    nn = NeuralNetwork(modules=[layer_one, hidden_one, layer_two], loss_fn=loss, solver=gradient)
+    nn.fit(train_X, train_y)
 
     # Plotting convergence process
     raise NotImplementedError()

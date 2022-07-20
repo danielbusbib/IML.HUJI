@@ -81,7 +81,7 @@ def animate_decision_boundary(nn: NeuralNetwork, weights: List[np.ndarray], lims
     frames = []
     for i, w in enumerate(weights):
         nn.weights = w
-        frames.append(go.Frame(data=[decision_surface(nn.predict, lims[0], lims[1], density=40, showscale=False),
+        frames.append(go.Frame(data=[decision_surface(nn._predict, lims[0], lims[1], density=40, showscale=False),
                                      go.Scatter(x=X[:, 0], y=X[:, 1], mode="markers",
                                                 marker=dict(color=y, colorscale=custom,
                                                             line=dict(color="black", width=1)))
@@ -92,16 +92,19 @@ def animate_decision_boundary(nn: NeuralNetwork, weights: List[np.ndarray], lims
                     layout=go.Layout(title=frames[0]["layout"]["title"]))
     if save_name:
         animation_to_gif(fig, save_name, 200, width=400, height=400)
+    return fig
 
 
 def callback_func(**kwargs):
-    values, weights = [], []
+    values, weights, grads = [], [], []
 
     def callback(**kwargs):
         values.append(kwargs["val"])
-        weights.append(np.linalg.norm(kwargs["weights"], ord=2))
+        grads.append(np.linalg.norm(kwargs["grad"], ord=2))
+        if int(kwargs["t"]) % 100 == 0:
+            weights.append(kwargs["weights"])
 
-    return callback, values, weights
+    return callback, values, weights, grads
 
 
 if __name__ == '__main__':
@@ -126,7 +129,7 @@ if __name__ == '__main__':
     # Question 1: Fitting simple network with two hidden layers                                    #
     # ---------------------------------------------------------------------------------------------#
     def qst(neurons=16):
-        callback, values, weights = callback_func()
+        callback, values, weights, grads_norm = callback_func()
         relu1, relu2 = ReLU(), ReLU()
         loss = CrossEntropyLoss()
         st = 0.1
@@ -144,10 +147,12 @@ if __name__ == '__main__':
 
         fig = plot_decision_boundary(nn, lims, train_X, train_y, title="Boundaries learned by network")
         plotly.offline.plot(fig)
-
+        print(f"----- {neurons} neurons -----")
         print("----- q1 -----")
         print(f"accuracy over test = {accuracy(test_y, nn._predict(test_X))}")
-        losses, gradient_norm = values.copy(), weights.copy()
+        losses, weights, gradient_norm = values.copy(), weights.copy(), grads_norm.copy()
+        plotly.offline.plot(animate_decision_boundary(nn, weights, lims, train_X, train_y))
+
         # ---------------------------------------------------------------------------------------------#
         # Question 2: Fitting a network with no hidden layers                                          #
         # ---------------------------------------------------------------------------------------------#
@@ -159,17 +164,18 @@ if __name__ == '__main__':
         # plotly.offline.plot(fig)
         print("----- q2 -----")
         print(f"accuracy over test = {accuracy(test_y, nn._predict(test_X))}")
-
+        print()
         # ---------------------------------------------------------------------------------------------#
         # Question 3+4: Plotting network convergence process                                           #
         # ---------------------------------------------------------------------------------------------#
         plt.title(f"Loss as function of iteration | hidden layers with {neurons} neurons")
         plt.plot(list(range(len(losses))), losses, label="loss")
-        plt.plot(list(range(len(gradient_norm))), gradient_norm, label="Ridge Validation Error")
-        plt.grid()
+        plt.plot(list(range(len(gradient_norm))), gradient_norm, label="gradient norm")
+        plt.grid(), plt.legend()
         plt.xlabel("iteration")
         plt.show()
 
 
     qst()
+    # Q-4
     qst(neurons=6)
