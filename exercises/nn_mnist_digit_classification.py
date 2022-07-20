@@ -83,44 +83,63 @@ def plot_images_grid(images: np.ndarray, title: str = ""):
         .update_yaxes(showticklabels=False)
 
 
+def callback_func(**kwargs):
+    values, weights, grads = [], [], []
+
+    def callback(**kwargs):
+        values.append(kwargs["val"])
+        grads.append(np.linalg.norm(kwargs["grad"], ord=2))
+        if int(kwargs["t"]) % 100 == 0:
+            weights.append(kwargs["weights"])
+
+    return callback, values, weights, grads
+
+
 if __name__ == '__main__':
     train_X, train_y, test_X, test_y = load_mnist()
     (n_samples, n_features), n_classes = train_X.shape, 10
+    import matplotlib.pyplot as plt
 
     # ---------------------------------------------------------------------------------------------#
     # Question 5+6+7: Network with ReLU activations using SGD + recording convergence              #
     # ---------------------------------------------------------------------------------------------#
     # Initialize, fit and test network
-    hidden_size = 64
-    relu1, relu2 = ReLU(), ReLU()
-    lr = FixedLR(0.1)
+    neurons = 64
+    callback, values, weights, grads_norm = callback_func()
+    relu1, relu2, lr = ReLU(), ReLU(), FixedLR(0.1)
     loss = CrossEntropyLoss()
-    layer_one = FullyConnectedLayer(input_dim=len(train_X[0]), output_dim=hidden_size, activation=relu1,
+    layer_one = FullyConnectedLayer(input_dim=len(train_X[0]), output_dim=neurons, activation=relu1,
                                     include_intercept=True)
-    hidden_one = FullyConnectedLayer(input_dim=hidden_size, output_dim=hidden_size, activation=relu2,
+    hidden_one = FullyConnectedLayer(input_dim=neurons, output_dim=neurons, activation=relu2,
                                      include_intercept=True)
-    layer_two = FullyConnectedLayer(input_dim=hidden_size, output_dim=10, include_intercept=True)
+    hidden_two = FullyConnectedLayer(input_dim=neurons, output_dim=10, include_intercept=True)
     gradient = StochasticGradientDescent(learning_rate=lr, max_iter=10000, batch_size=256, callback=callback)
-    nn = NeuralNetwork(modules=[layer_one, hidden_one, layer_two], loss_fn=loss, solver=gradient)
-    nn.fit(train_X, train_y)
+    nn = NeuralNetwork(modules=[layer_one, hidden_one, hidden_two], loss_fn=loss, solver=gradient)
+    nn._fit(train_X, train_y)
+    print("----- q5 -----")
+    print(f"accuracy over test = {accuracy(test_y, nn._predict(test_X))}")
 
     # Plotting convergence process
-    raise NotImplementedError()
+    plt.title(f"Loss as function of iteration | hidden layers with {neurons} neurons")
+    plt.plot(list(range(len(values))), values, label="loss")
+    plt.plot(list(range(len(grads_norm))), grads_norm, label="gradient norm")
+    plt.grid(), plt.legend()
+    plt.xlabel("iteration")
+    plt.show()
 
     # Plotting test true- vs predicted confusion matrix
-    raise NotImplementedError()
+    print(confusion_matrix(test_y, nn._predict(train_y)))
 
     # ---------------------------------------------------------------------------------------------#
     # Question 8: Network without hidden layers using SGD                                          #
     # ---------------------------------------------------------------------------------------------#
-    raise NotImplementedError()
 
     # ---------------------------------------------------------------------------------------------#
     # Question 9: Most/Least confident predictions                                                 #
     # ---------------------------------------------------------------------------------------------#
-    raise NotImplementedError()
+    # raise NotImplementedError()
 
     # ---------------------------------------------------------------------------------------------#
     # Question 10: GD vs GDS Running times                                                         #
     # ---------------------------------------------------------------------------------------------#
-    raise NotImplementedError()
+    # raise NotImplementedError()
