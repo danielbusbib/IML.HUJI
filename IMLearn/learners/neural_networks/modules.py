@@ -1,6 +1,7 @@
 import numpy as np
 from IMLearn.base.base_module import BaseModule
 from IMLearn.metrics.loss_functions import cross_entropy, softmax
+import pandas as pd
 
 
 class FullyConnectedLayer(BaseModule):
@@ -24,6 +25,7 @@ class FullyConnectedLayer(BaseModule):
     include_intercept: bool
         Should layer include an intercept or not
     """
+
     def __init__(self, input_dim: int, output_dim: int, activation: BaseModule = None, include_intercept: bool = True):
         """
         Initialize a module of a fully connected layer
@@ -48,7 +50,13 @@ class FullyConnectedLayer(BaseModule):
         Weights are randomly initialized following N(0, 1/input_dim)
         """
         super().__init__()
-        raise NotImplementedError()
+        self.input_dim_, self.output_dim_, self.activation_ = input_dim, output_dim, activation
+        self.include_intercept_ = include_intercept
+        in_dim = self.input_dim_
+        if self.include_intercept_:
+            in_dim = input_dim + 1
+        mu, sigma = 0, 1/input_dim
+        self.weights = np.random.normal(mu, sigma, (in_dim, self.output_dim_))
 
     def compute_output(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """
@@ -65,7 +73,16 @@ class FullyConnectedLayer(BaseModule):
         output: ndarray of shape (n_samples, output_dim)
             Value of function at point self.weights
         """
-        raise NotImplementedError()
+        if self.include_intercept_:
+            X = np.c_[np.ones(X.shape[0]), X]
+        w_X = X @ self.weights
+
+        if kwargs.get("pre_active"):
+            kwargs["pre_active"][0] = w_X
+
+        if self.activation_:
+            return self.activation_.compute_output(w_X)
+        return w_X
 
     def compute_jacobian(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """
@@ -81,7 +98,9 @@ class FullyConnectedLayer(BaseModule):
         output: ndarray of shape (input_dim, n_samples)
             Derivative with respect to self.weights at point self.weights
         """
-        raise NotImplementedError()
+        if self.activation_:
+            return self.activation_.compute_jacobian(X=X)
+        return np.ones(X.shape)
 
 
 class ReLU(BaseModule):
@@ -103,7 +122,7 @@ class ReLU(BaseModule):
         output: ndarray of shape (n_samples, input_dim)
             Data after performing the ReLU activation function
         """
-        raise NotImplementedError()
+        return np.maximum(0, X)
 
     def compute_jacobian(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """
@@ -119,13 +138,14 @@ class ReLU(BaseModule):
         output: ndarray of shape (n_samples,)
             Element-wise derivative of ReLU with respect to given data
         """
-        raise NotImplementedError()
+        return np.where(X <= 0, 0, 1)
 
 
 class CrossEntropyLoss(BaseModule):
     """
     Module of Cross-Entropy Loss: The Cross-Entropy between the Softmax of a sample x and e_k for a true class k
     """
+
     def compute_output(self, X: np.ndarray, y: np.ndarray, **kwargs) -> np.ndarray:
         """
         Computes the Cross-Entropy over the Softmax of given data, with respect to every
@@ -145,7 +165,7 @@ class CrossEntropyLoss(BaseModule):
         output: ndarray of shape (n_samples,)
             cross-entropy loss value of given X and y
         """
-        raise NotImplementedError()
+        return cross_entropy(pd.get_dummies(y).to_numpy(), softmax(X))
 
     def compute_jacobian(self, X: np.ndarray, y: np.ndarray, **kwargs) -> np.ndarray:
         """
@@ -164,5 +184,4 @@ class CrossEntropyLoss(BaseModule):
         output: ndarray of shape (n_samples, input_dim)
             derivative of cross-entropy loss with respect to given input
         """
-        raise NotImplementedError()
-
+        return softmax(X) - pd.get_dummies(y).to_numpy()

@@ -23,12 +23,14 @@ class NeuralNetwork(BaseEstimator, BaseModule):
 
     pre_activations_:
     """
+
     def __init__(self,
                  modules: List[FullyConnectedLayer],
                  loss_fn: BaseModule,
                  solver: Union[StochasticGradientDescent, GradientDescent]):
         super().__init__()
-        raise NotImplementedError()
+        self.modules_, self.loss_func_, self._solver = modules, loss_fn, solver
+        self.post_activations, self.pre_activations = [], []
 
     # region BaseEstimator implementations
     def _fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
@@ -43,7 +45,7 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         y : ndarray of shape (n_samples, )
             Responses of input data to fit to
         """
-        raise NotImplementedError()
+        self._solver.fit(self, X, y)
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -59,7 +61,7 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         responses : ndarray of shape (n_samples, )
             Predicted labels of given samples
         """
-        raise NotImplementedError()
+        return np.argmax(self.compute_prediction(X), axis=1)
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -78,7 +80,8 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         loss : float
             Performance under specified loss function
         """
-        raise NotImplementedError()
+        return self.loss_func_.compute_output(self.compute_prediction(X), y)
+
     # endregion
 
     # region BaseModule implementations
@@ -103,7 +106,14 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         -----
         Function stores all intermediate values in the `self.pre_activations_` and `self.post_activations_` arrays
         """
-        raise NotImplementedError()
+        self.post_activations, self.pre_activations = [X], []
+        curr = X
+        for mod in self.modules_:
+            lst = [0]
+            curr = mod.compute_output(X=curr, pre_active=lst)
+            self.post_activations.append(curr)
+            self.pre_activations.append(lst[0])
+        return self.loss_func_.compute_output(self.post_activations[-1], y)
 
     def compute_prediction(self, X: np.ndarray):
         """
@@ -120,7 +130,10 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         output : ndarray of shape (n_samples, n_classes)
             Network's output values prior to the call of the loss function
         """
-        raise NotImplementedError()
+        pred = X
+        for module in self.modules_:
+            pred = module.compute_output(pred)
+        return pred
 
     def compute_jacobian(self, X: np.ndarray, y: np.ndarray, **kwargs) -> np.ndarray:
         """
@@ -143,7 +156,25 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         Function depends on values calculated in forward pass and stored in
         `self.pre_activations_` and `self.post_activations_`
         """
-        raise NotImplementedError()
+        last = self.post_activations[-1]
+        deriv = self.loss_func_.compute_jacobian(last, y)
+        grads = []
+        # back
+        for i in range(len(self.modules_)):
+            module = self.modules_[len(self.modules_) - i - 1]
+            activation = self.post_activations[len(self.modules_) - i - 1]
+            w_t = module.weights.T
+
+            if module.include_intercept_:
+                w_t = np.delete(w_t, 0, axis=1)
+                activation = np.c_[np.ones(activation.shape[0]), activation]
+
+            input = self.pre_activations[len(self.modules_) - i - 1]
+            t = module.compute_jacobian(X=input) * deriv
+            deriv = t @ w_t
+            grads.append((t.T @ activation).T)
+
+        return self._flatten_parameters(reversed(grads))
 
     @property
     def weights(self) -> np.ndarray:
@@ -172,6 +203,7 @@ class NeuralNetwork(BaseEstimator, BaseModule):
         non_flat_weights = NeuralNetwork._unflatten_parameters(weights, self.modules_)
         for module, weights in zip(self.modules_, non_flat_weights):
             module.weights = weights
+
     # endregion
 
     # region Internal methods

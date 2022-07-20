@@ -11,6 +11,7 @@ from utils import *
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.io as pio
+
 pio.templates.default = "simple_white"
 
 
@@ -51,7 +52,7 @@ def generate_nonlinear_data(
     test_y : ndarray of shape (floor((1-train_proportion) * n_samples), )
         Responses of test samples
     """
-    X, y = np.zeros((samples_per_class*n_classes, n_features)), np.zeros(samples_per_class*n_classes, dtype='uint8')
+    X, y = np.zeros((samples_per_class * n_classes, n_features)), np.zeros(samples_per_class * n_classes, dtype='uint8')
     for j in range(n_classes):
         ix = range(samples_per_class * j, samples_per_class * (j + 1))
         r = np.linspace(0.0, 1, samples_per_class)  # radius
@@ -63,7 +64,7 @@ def generate_nonlinear_data(
 
 
 def plot_decision_boundary(nn: NeuralNetwork, lims, X: np.ndarray = None, y: np.ndarray = None, title=""):
-    data = [decision_surface(nn.predict, lims[0], lims[1], density=40, showscale=False)]
+    data = [decision_surface(nn._predict, lims[0], lims[1], density=40, showscale=False)]
     if X is not None:
         col = y if y is not None else "black"
         data += [go.Scatter(x=X[:, 0], y=X[:, 1], mode="markers",
@@ -82,14 +83,25 @@ def animate_decision_boundary(nn: NeuralNetwork, weights: List[np.ndarray], lims
         nn.weights = w
         frames.append(go.Frame(data=[decision_surface(nn.predict, lims[0], lims[1], density=40, showscale=False),
                                      go.Scatter(x=X[:, 0], y=X[:, 1], mode="markers",
-                                                marker=dict(color=y, colorscale=custom, line=dict(color="black", width=1)))
+                                                marker=dict(color=y, colorscale=custom,
+                                                            line=dict(color="black", width=1)))
                                      ],
-                               layout=go.Layout(title=rf"$\text{{{title} Iteration {i+1}}}$")))
+                               layout=go.Layout(title=rf"$\text{{{title} Iteration {i + 1}}}$")))
 
     fig = go.Figure(data=frames[0]["data"], frames=frames[1:],
                     layout=go.Layout(title=frames[0]["layout"]["title"]))
     if save_name:
         animation_to_gif(fig, save_name, 200, width=400, height=400)
+
+
+def callback_func(**kwargs):
+    values, weights = [], []
+
+    def callback(**kwargs):
+        values.append(kwargs["val"])
+        weights.append(np.linalg.norm(kwargs["weights"], ord=2))
+
+    return callback, values, weights
 
 
 if __name__ == '__main__':
@@ -104,20 +116,56 @@ if __name__ == '__main__':
     go.Figure(data=[go.Scatter(x=train_X[:, 0], y=train_X[:, 1], mode='markers',
                                marker=dict(color=train_y, colorscale=custom, line=dict(color="black", width=1)))],
               layout=go.Layout(title=r"$\text{Train Data}$", xaxis=dict(title=r"$x_1$"), yaxis=dict(title=r"$x_2$"),
-                               width=400, height=400))\
-        .write_image(f"../figures/nonlinear_data.png")
+                               width=400, height=400)) \
+        .write_image(f"nonlinear_data.png")
+
+    import matplotlib.pyplot as plt
 
     # ---------------------------------------------------------------------------------------------#
     # Question 1: Fitting simple network with two hidden layers                                    #
     # ---------------------------------------------------------------------------------------------#
-    raise NotImplementedError()
+    def qst(neurons=16):
+        callback, values, weights = callback_func()
+        relu1, relu2 = ReLU(), ReLU()
+        loss = CrossEntropyLoss()
+        st = 0.1
+        lr = FixedLR(st)
 
-    # ---------------------------------------------------------------------------------------------#
-    # Question 2: Fitting a network with no hidden layers                                          #
-    # ---------------------------------------------------------------------------------------------#
-    raise NotImplementedError()
+        # layers modules
+        layer_one = FullyConnectedLayer(input_dim=len(train_X[0]), output_dim=neurons, activation=relu1)
+        hidden_one = FullyConnectedLayer(input_dim=neurons, output_dim=neurons, activation=relu2)
+        layer_two = FullyConnectedLayer(include_intercept=True, input_dim=neurons, output_dim=3)
+        # solver
+        gradient = GradientDescent(learning_rate=lr, max_iter=5000, callback=callback)
+        # NN
+        nn = NeuralNetwork(modules=[layer_one, hidden_one, layer_two], solver=gradient, loss_fn=loss)
+        nn._fit(train_X, train_y)
 
-    # ---------------------------------------------------------------------------------------------#
-    # Question 3+4: Plotting network convergence process                                           #
-    # ---------------------------------------------------------------------------------------------#
-    raise NotImplementedError()
+        # fig = plot_decision_boundary(nn, lims, train_X, train_y, title="Boundaries learned by network")
+        # plotly.offline.plot(fig)
+        print("----- q1 -----")
+        print(f"accuracy over test = {accuracy(test_y, nn._predict(test_X))}")
+        losses, gradient_norm = values.copy(), weights.copy()
+        # ---------------------------------------------------------------------------------------------#
+        # Question 2: Fitting a network with no hidden layers                                          #
+        # ---------------------------------------------------------------------------------------------#
+        layer_one = FullyConnectedLayer(input_dim=len(train_X[0]), output_dim=3, activation=relu1, include_intercept=True)
+        nn = NeuralNetwork(modules=[layer_one], loss_fn=loss, solver=gradient)
+        nn._fit(train_X, train_y)
+        # fig = plot_decision_boundary(nn, lims, train_X, train_y, title="Test")
+        # plotly.offline.plot(fig)
+        print("----- q2 -----")
+        print(f"accuracy over test = {accuracy(test_y, nn._predict(test_X))}")
+
+        # ---------------------------------------------------------------------------------------------#
+        # Question 3+4: Plotting network convergence process                                           #
+        # ---------------------------------------------------------------------------------------------#
+        plt.title(f"Loss as function of iteration | hidden layers with {neurons} neurons")
+        plt.plot(list(range(len(losses))), losses, label="loss")
+        plt.plot(list(range(len(gradient_norm))), gradient_norm, label="Ridge Validation Error")
+        plt.grid()
+        plt.xlabel("iteration")
+        plt.show()
+
+    qst()
+    qst(neurons=6)

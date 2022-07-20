@@ -101,7 +101,7 @@ def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e /
         w = gd.fit(l2, X=None, y=None)
         if eta == .01:
             plotly.offline.plot(plot_descent_path(L2, np.array(c[2]), title=f"| module L2 | eta={eta}"))
-        fig1.add_trace(go.Scatter(x=np.arange(len(c[1])), y=np.array(c[1]).flatten(),
+        fig2.add_trace(go.Scatter(x=np.arange(len(c[1])), y=np.array(c[1]).flatten(),
                                     mode="lines", name=f"eta = {eta}"))
         l2.weights = w.copy()
         print(f"eta: {eta}")
@@ -114,7 +114,7 @@ def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e /
         w = gd.fit(l1, X=None, y=None)
         if eta == .01:
             plotly.offline.plot(plot_descent_path(L1, np.array(c[2]), title=f"| module L1 | eta={eta}"))
-        fig2.add_trace(go.Scatter(x=np.arange(len(c[1])), y=np.array(c[1]).flatten(),
+        fig1.add_trace(go.Scatter(x=np.arange(len(c[1])), y=np.array(c[1]).flatten(),
                                     mode="lines", name=f"eta = {eta}"))
         l1.weights = w.copy()
         print(f"module: L1, lowest error: {l1.compute_output()}", end='\n')
@@ -122,7 +122,7 @@ def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e /
     fig1.update_layout(xaxis_title="GD Iteration", yaxis_title="Norm")
     plotly.offline.plot(fig1)
     fig2.update_layout(xaxis_title="GD Iteration", yaxis_title="Norm")
-    plotly.offline.plot(fig2)
+    # plotly.offline.plot(fig2)
 
 
 def compare_exponential_decay_rates(init: np.ndarray = np.array([np.sqrt(2), np.e / 3]),
@@ -130,7 +130,6 @@ def compare_exponential_decay_rates(init: np.ndarray = np.array([np.sqrt(2), np.
                                     gammas: Tuple[float] = (.9, .95, .99, 1)):
     # Optimize the L1 objective using different decay-rate values of the exponentially decaying learning rate
     c_rate = []
-    d = []
     fig = go.Figure(layout=dict(title="L1 Norm Convergence Using Different Decay Rates"))
     for g in gammas:
         c = get_gd_state_recorder_callback()
@@ -141,15 +140,20 @@ def compare_exponential_decay_rates(init: np.ndarray = np.array([np.sqrt(2), np.
         fig.add_trace(go.Scatter(x=np.arange(len(c[1])), y=c[1], mode="lines",
                                  name=f"gamma = {g}"))
         c_rate.append(c[1])
-        if g == .95:
-            d = c[2]
+
     fig.update_layout(xaxis_title="GD iteration", yaxis_title="Norm Val")
     plotly.offline.plot(fig)
 
     print(f"exponentially decay - l1 lowest norm: {np.min([np.min(c_rate[i]) for i in range(4)])}")
     # Plot descent path for gamma=0.95
-    plotly.offline.plot(plot_descent_path(L1, np.array(d), title="L1 NORM | Decay Rate = 0.95"))
-    plotly.offline.plot(plot_descent_path(L2, np.array(d), title="L2 NORM | Decay Rate = 0.95"))
+    l1_callback, l1_descent_path, l1_weights = get_gd_state_recorder_callback()
+    l2_callback, l2_descent_path, l2_weights = get_gd_state_recorder_callback()
+    l1_gd = GradientDescent(learning_rate=ExponentialLR(eta, 0.95), callback=l1_callback)
+    l2_gd = GradientDescent(learning_rate=ExponentialLR(eta, 0.95), callback=l2_callback)
+    l1_gd.fit(L1(init), X=None, y=None)
+    l2_gd.fit(L2(init), X=None, y=None)
+    plotly.offline.plot(plot_descent_path(L1, np.array(l1_weights), title="L1 NORM | Decay Rate = 0.95"))
+    plotly.offline.plot(plot_descent_path(L2, np.array(l2_weights), title="L2 NORM | Decay Rate = 0.95"))
 
 
 def load_data(path: str = "../datasets/SAheart.data", train_portion: float = .8) -> \
@@ -234,7 +238,7 @@ def fit_logistic_regression():
 
 if __name__ == '__main__':
     np.random.seed(0)
-    compare_fixed_learning_rates()
+    # compare_fixed_learning_rates()
     compare_exponential_decay_rates()
-    warnings.filterwarnings('ignore')
-    fit_logistic_regression()
+    # warnings.filterwarnings('ignore')
+    # fit_logistic_regression()
