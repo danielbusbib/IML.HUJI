@@ -138,7 +138,7 @@ if __name__ == '__main__':
         # layers modules
         layer_one = FullyConnectedLayer(input_dim=len(train_X[0]), output_dim=neurons, activation=relu1)
         hidden_one = FullyConnectedLayer(input_dim=neurons, output_dim=neurons, activation=relu2)
-        layer_two = FullyConnectedLayer(include_intercept=True, input_dim=neurons, output_dim=3)
+        layer_two = FullyConnectedLayer(input_dim=neurons, output_dim=3)
         # solver
         gradient = GradientDescent(learning_rate=lr, max_iter=5000, callback=callback)
         # NN
@@ -168,7 +168,7 @@ if __name__ == '__main__':
         # ---------------------------------------------------------------------------------------------#
         # Question 3+4: Plotting network convergence process                                           #
         # ---------------------------------------------------------------------------------------------#
-        plt.title(f"Loss as function of iteration | hidden layers with {neurons} neurons")
+        plt.title(f"Loss as function of iteration | no hidden layers with {neurons} neurons")
         plt.plot(list(range(len(losses))), losses, label="loss")
         plt.plot(list(range(len(gradient_norm))), gradient_norm, label="gradient norm")
         plt.grid(), plt.legend()

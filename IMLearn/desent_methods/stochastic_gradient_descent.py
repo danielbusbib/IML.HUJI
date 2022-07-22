@@ -113,6 +113,7 @@ class StochasticGradientDescent:
         sum_w = np.zeros(f.weights.shape)
         n = 0
         for t in range(self.max_iter_):
+            print(t)
             n += 1
             prev = f.weights
             val, jacobian, eta = self._partial_fit(f, X, y, t)
